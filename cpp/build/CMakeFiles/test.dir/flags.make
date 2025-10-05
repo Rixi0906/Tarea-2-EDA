@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/home/jmsaavedrar/Research/git/eda_cpp_full/poscodes/cpp/include
+CXX_INCLUDES = -I/home/eda/Tarea2/Tarea-2-EDA/cpp/include
 
 CXX_FLAGS = -std=gnu++11
 

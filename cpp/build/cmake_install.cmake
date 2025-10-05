@@ -1,4 +1,4 @@
-# Install script for directory: /home/jmsaavedrar/Research/git/eda_cpp_full/poscodes/cpp
+# Install script for directory: /home/eda/Tarea2/Tarea-2-EDA/cpp
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/jmsaavedrar/Research/git/eda_cpp_full/poscodes/cpp/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/eda/Tarea2/Tarea-2-EDA/cpp/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
