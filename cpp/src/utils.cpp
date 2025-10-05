@@ -4,7 +4,7 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
-
+#include <numeric> 
 // =================== Helpers comunes ===================
 
 // Mapea el carácter de la posición p al valor de bucket.
@@ -60,58 +60,53 @@ void merge_sort(Poscode *A, size_t n){
     delete[] aux;
 }
 
-// =================== RadixSort (LSD) con listas enlazadas O(1) ===================
 
-struct Node { size_t idx; Node* next; Node(size_t i): idx(i), next(nullptr) {} };
-struct FastList {
-    Node* head = nullptr;
-    Node* tail = nullptr;
-    inline void push_back(size_t idx){
-        Node* nd = new Node(idx);
-        if (!head) head = tail = nd;
-        else { tail->next = nd; tail = nd; }
-    }
-    inline void clear(){
-        Node* cur = head;
-        while (cur){ Node* nx = cur->next; delete cur; cur = nx; }
-        head = tail = nullptr;
-    }
-    ~FastList(){ clear(); }
-};
-
-// Counting sort estable por columna p (0..5)
-static void counting_sort_by_pos(Poscode* A, size_t n, size_t p){
-    const int M = radix_base_at_pos(p); // 10 o 26
-    std::vector<FastList> buckets(M);
-    for (size_t i = 0; i < n; ++i) {
-        int v = bucket_value(A[i], p);
-        // Asumimos datos válidos: 0..9 o 0..25
-        buckets[v].push_back(i);
-    }
-
-    // Reconstrucción estable
-    Poscode* out = new Poscode[n];
-    size_t k = 0;
-    for (int b = 0; b < M; ++b) {
-        for (Node* cur = buckets[b].head; cur; cur = cur->next) {
-            out[k++] = A[cur->idx];
-        }
-    }
-
-    // Copiar resultado a A y liberar
-    for (size_t i = 0; i < n; ++i) A[i] = out[i];
-    delete[] out;
-    // Los destructores de FastList liberan los nodos
+// p: 0..5  (0..3 dígitos, 4..5 letras en MAYÚSCULAS)
+static inline int bucket_value_fast(const Poscode& pc, size_t p){
+    char c = pc.getValue(p);
+    return (p <= 3) ? (int)(c - '0') : (int)(c - 'A');
 }
 
 void radix_sort(Poscode *A, size_t n){
     if (n <= 1) return;
-    // LSD: de la última posición (5) a la primera (0)
-    // Posiciones 4,5 son letras base 26; 0..3 dígitos base 10
-    for (int p = 5; p >= 0; --p) {
-        counting_sort_by_pos(A, n, static_cast<size_t>(p));
-    }
+
+    // Ordenamos ÍNDICES en cada pasada; copiamos objetos UNA sola vez al final.
+    std::vector<int> I(n), J(n);
+    std::iota(I.begin(), I.end(), 0);
+
+    auto pass_idx = [&](size_t p, int M){
+        // 1) contar
+        int cnt[26] = {0};
+        for (size_t k=0; k<n; ++k){
+            cnt[ bucket_value_fast(A[I[k]], p) ]++;
+        }
+        // 2) offsets (prefix sum -> territorio contiguo por bucket)
+        int pos[26];
+        pos[0] = 0;
+        for (int b=1; b<M; ++b) pos[b] = pos[b-1] + cnt[b-1];
+        // 3) distribución estable
+        for (size_t k=0; k<n; ++k){
+            int idx = I[k];
+            int v = bucket_value_fast(A[idx], p);
+            J[ pos[v]++ ] = idx; // O(1) “push” por bucket
+        }
+        I.swap(J);
+    };
+
+    // Pasadas LSD: letras 5,4 (26) y dígitos 3..0 (10)
+    pass_idx(5, 26);
+    pass_idx(4, 26);
+    pass_idx(3, 10);
+    pass_idx(2, 10);
+    pass_idx(1, 10);
+    pass_idx(0, 10);
+
+    // Reordenamos los objetos UNA vez según I
+    std::vector<Poscode> B(n);
+    for (size_t i=0;i<n;++i) B[i] = A[I[i]];
+    for (size_t i=0;i<n;++i) A[i] = B[i];
 }
+
 
 // =================== I/O ===================
 
