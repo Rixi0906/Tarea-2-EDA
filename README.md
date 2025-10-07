@@ -1,6 +1,6 @@
 INSTRUCCIONES
 
-1- cd ~/Tarea2/Tarea-2-EDA/cpp
+1- cd ~/Tarea2/Tarea-2-EDA/cpp 
 2- cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 3- cmake --build build -j
 4- cd build/
