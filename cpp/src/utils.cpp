@@ -4,131 +4,115 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
-#include <numeric> 
-// =================== Helpers comunes ===================
+#include <numeric>
+using namespace std;
 
-// Mapea el carácter de la posición p al valor de bucket.
-// Asumo formato: 4 dígitos (0..9) + 2 letras (A..Z). Largo = 6.
-// p es 0..5 (0 = primer char)
-static inline int bucket_value(const Poscode& pc, size_t p) {
-    char c = pc.getValue(p);
-    if (p <= 3) {
-        // dígitos
-        return int(c - '0'); // asume '0'..'9'
+static inline int valor_bucket(const Poscode& codigo, size_t pos) {
+    char caracter = codigo.getValue(pos);
+    if (pos <= 3) {
+        return static_cast<int>(caracter - '0');
     } else {
-        // letras
-        c = std::toupper(static_cast<unsigned char>(c));
-        return int(c - 'A'); // asume 'A'..'Z'
+        caracter = toupper(static_cast<unsigned char>(caracter));
+        return static_cast<int>(caracter - 'A');
     }
 }
 
-static inline int radix_base_at_pos(size_t p) {
-    return (p <= 3) ? 10 : 26;
+static inline int base_radix_en_pos(size_t pos) {
+    return (pos <= 3) ? 10 : 26;
 }
 
-// =================== QuickSort ===================
+static inline int valor_bucket_rapido(const Poscode& codigo, size_t pos){
+    char caracter = codigo.getValue(pos);
+    return (pos <= 3) ? static_cast<int>(caracter - '0') : static_cast<int>(caracter - 'A');
+}
 
-void quick_sort(Poscode *A, size_t n){
-    // Orden lexicográfico por el string completo
-    std::sort(A, A + n, [](const Poscode& a, const Poscode& b){
-        return a.getData() < b.getData();
+void quick_sort(Poscode *arreglo, size_t cantidad){
+    sort(arreglo, arreglo + cantidad, [](const Poscode& izq, const Poscode& der){
+        return izq.getData() < der.getData();
     });
 }
 
-// =================== MergeSort (estable) ===================
-
-static void merge_rec(Poscode* A, Poscode* aux, size_t l, size_t r){
-    if (r - l <= 1) return;
-    size_t m = (l + r) >> 1;
-    merge_rec(A, aux, l, m);
-    merge_rec(A, aux, m, r);
-    size_t i = l, j = m, k = l;
-    while (i < m && j < r) {
-        if (A[i].getData() <= A[j].getData()) aux[k++] = A[i++];
-        else                                    aux[k++] = A[j++];
+static void merge2(Poscode* arreglo, Poscode* auxiliar, size_t idx_izq, size_t idx_der){
+    if (idx_der - idx_izq <= 1) return;
+    size_t idx_medio = (idx_izq + idx_der) >> 1;
+    merge2(arreglo, auxiliar, idx_izq, idx_medio);
+    merge2(arreglo, auxiliar, idx_medio, idx_der);
+    size_t idx_i = idx_izq, idx_j = idx_medio, idx_k = idx_izq;
+    while (idx_i < idx_medio && idx_j < idx_der) {
+        if (arreglo[idx_i].getData() <= arreglo[idx_j].getData())
+            auxiliar[idx_k++] = arreglo[idx_i++];
+        else
+            auxiliar[idx_k++] = arreglo[idx_j++];
     }
-    while (i < m) aux[k++] = A[i++];
-    while (j < r) aux[k++] = A[j++];
-    for (size_t t = l; t < r; ++t) A[t] = aux[t];
+    while (idx_i < idx_medio) auxiliar[idx_k++] = arreglo[idx_i++];
+    while (idx_j < idx_der)   auxiliar[idx_k++] = arreglo[idx_j++];
+    for (size_t idx_t = idx_izq; idx_t < idx_der; ++idx_t)
+        arreglo[idx_t] = auxiliar[idx_t];
 }
 
-void merge_sort(Poscode *A, size_t n){
-    if (n <= 1) return;
-    // Auxiliar en heap para no reventar stack en n grande
-    Poscode* aux = new Poscode[n];
-    merge_rec(A, aux, 0, n);
-    delete[] aux;
+void merge_sort(Poscode *arreglo, size_t cantidad){
+    if (cantidad <= 1) return;
+    Poscode* auxiliar = new Poscode[cantidad];
+    merge2(arreglo, auxiliar, 0, cantidad);
+    delete[] auxiliar;
 }
+void radix_sort(Poscode *arreglo, size_t cantidad){
+    if (cantidad <= 1) return;
 
+    using namespace std;
 
-// p: 0..5  (0..3 dígitos, 4..5 letras en MAYÚSCULAS)
-static inline int bucket_value_fast(const Poscode& pc, size_t p){
-    char c = pc.getValue(p);
-    return (p <= 3) ? (int)(c - '0') : (int)(c - 'A');
-}
-
-void radix_sort(Poscode *A, size_t n){
-    if (n <= 1) return;
-
-    // Ordenamos ÍNDICES en cada pasada; copiamos objetos UNA sola vez al final.
-    std::vector<int> I(n), J(n);
-    std::iota(I.begin(), I.end(), 0);
-
-    auto pass_idx = [&](size_t p, int M){
-        // 1) contar
-        int cnt[26] = {0};
-        for (size_t k=0; k<n; ++k){
-            cnt[ bucket_value_fast(A[I[k]], p) ]++;
-        }
-        // 2) offsets (prefix sum -> territorio contiguo por bucket)
-        int pos[26];
-        pos[0] = 0;
-        for (int b=1; b<M; ++b) pos[b] = pos[b-1] + cnt[b-1];
-        // 3) distribución estable
-        for (size_t k=0; k<n; ++k){
-            int idx = I[k];
-            int v = bucket_value_fast(A[idx], p);
-            J[ pos[v]++ ] = idx; // O(1) “push” por bucket
-        }
-        I.swap(J);
+    auto clave16 = [&](const Poscode& c, size_t hi, size_t lo)->int{
+        unsigned a = (unsigned)(unsigned char)c.getValue(hi);
+        unsigned b = (unsigned)(unsigned char)c.getValue(lo);
+        return (int)((a<<8) | b);
     };
 
-    // Pasadas LSD: letras 5,4 (26) y dígitos 3..0 (10)
-    pass_idx(5, 26);
-    pass_idx(4, 26);
-    pass_idx(3, 10);
-    pass_idx(2, 10);
-    pass_idx(1, 10);
-    pass_idx(0, 10);
+    vector<int> idx(cantidad), tmp(cantidad);
+    iota(idx.begin(), idx.end(), 0);
 
-    // Reordenamos los objetos UNA vez según I
-    std::vector<Poscode> B(n);
-    for (size_t i=0;i<n;++i) B[i] = A[I[i]];
-    for (size_t i=0;i<n;++i) A[i] = B[i];
+    vector<int> conteo(65536), offset(65536);
+
+    auto pasada = [&](size_t hi, size_t lo){
+        fill(conteo.begin(), conteo.end(), 0);
+        for (size_t k=0; k<cantidad; ++k) conteo[ clave16(arreglo[idx[k]], hi, lo) ]++;
+        offset[0] = 0;
+        for (int v=1; v<65536; ++v) offset[v] = offset[v-1] + conteo[v-1];
+        for (size_t k=0; k<cantidad; ++k){
+            int id = idx[k];
+            int v  = clave16(arreglo[id], hi, lo);
+            tmp[ offset[v]++ ] = id;
+        }
+        idx.swap(tmp);
+    };
+
+    pasada(4,5);
+    pasada(2,3);
+    pasada(0,1);
+
+    vector<Poscode> buf(cantidad);
+    for (size_t i=0; i<cantidad; ++i) buf[i] = arreglo[idx[i]];
+    for (size_t i=0; i<cantidad; ++i) arreglo[i] = std::move(buf[i]);
 }
 
+Poscode *readCodes(const string &ruta_archivo, size_t cantidad){
+    Poscode *codigos = new Poscode[cantidad];
+    ifstream archivo(ruta_archivo);
 
-// =================== I/O ===================
-
-Poscode *readCodes(const std::string &strfile, size_t n){
-    Poscode *codes = new Poscode[n];
-    std::ifstream inputFile(strfile);
-    if (!inputFile.is_open()) {
-        std::cerr << "Error: Unable to open the file!\n";
-        delete[] codes;
+    if (!archivo.is_open()) {
+        cerr << "Error: Unable to open the file!\n";
+        delete[] codigos;
         return nullptr;
     }
-    std::string line;
-    size_t i = 0;
-    for (; i < n && std::getline(inputFile, line); ++i){
-        // Opcional: validar largo==6, pero mantenemos tus supuestos
-        codes[i] = Poscode(line);
+    string linea;
+    size_t idx = 0;
+    for (; idx < cantidad && getline(archivo, linea); ++idx){
+        codigos[idx] = Poscode(linea);
     }
-    // Si el archivo tuvo menos de n líneas, completamos con strings vacíos
-    for (; i < n; ++i) codes[i] = Poscode("");
-    return codes;
+    for (; idx < cantidad; ++idx)
+        codigos[idx] = Poscode("");
+    return codigos;
 }
 
-void deleteCodes(Poscode *codes){
-    delete[] codes;
+void deleteCodes(Poscode *codigos){
+    delete[] codigos;
 }

@@ -1,3 +1,0 @@
-/home/eda/Tarea2/Tarea-2-EDA/cpp/build/CMakeFiles/test.dir
-/home/eda/Tarea2/Tarea-2-EDA/cpp/build/CMakeFiles/edit_cache.dir
-/home/eda/Tarea2/Tarea-2-EDA/cpp/build/CMakeFiles/rebuild_cache.dir
